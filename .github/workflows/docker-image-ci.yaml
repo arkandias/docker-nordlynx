@@ -26,10 +26,11 @@ jobs:
         run: |
           echo "date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
           echo "sha_short=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
-          ghcr_ref="ghcr.io/${{ github.repository_owner }}/nordlynx"
-          dockerhub_ref="${{ vars.DOCKERHUB_NAMESPACE }}/nordlynx"
+          ghcr_ref="ghcr.io/${{ github.repository_owner }}/${{ vars.IMAGE_NAME }}"
+          echo "ghcr_ref=${ghcr_ref}" >> $GITHUB_OUTPUT
+          dockerhub_ref="${{ vars.DOCKERHUB_NAMESPACE }}/${{ vars.IMAGE_NAME }}"
+          echo "dockerhub_ref=${dockerhub_ref}" >> $GITHUB_OUTPUT
           if [[ $GITHUB_REF_TYPE == tag ]]; then
-            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
             echo "ghcr_tags=${ghcr_ref}:${GITHUB_REF_NAME},${ghcr_ref}:latest" >> $GITHUB_OUTPUT
             echo "dockerhub_tags=${dockerhub_ref}:${GITHUB_REF_NAME},${dockerhub_ref}:latest" >> $GITHUB_OUTPUT
           else
@@ -71,3 +72,12 @@ jobs:
             REPO_URL=${{ github.server_url }}/${{ github.repository }}
             VCS_REF=${{ steps.vars.outputs.sha_short }}
             VERSION=${{ github.ref_name }}
+            
+      - name: Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: ${{ steps.vars.outputs.dockerhub_ref }}
+          short-description: ${{ github.event.repository.description }}
+          readme-filepath: ./README.md
