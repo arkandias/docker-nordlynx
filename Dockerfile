@@ -8,15 +8,15 @@ ARG VCS_REF
 ARG VERSION
 
 LABEL \
-    org.opencontainers.image.title="NordLynx" \
-    org.opencontainers.image.description="A containerized client for NordLynx (NordVPN WireGuard protocol)" \
-    org.opencontainers.image.authors="Julien Hauseux <julien.hauseux@gmail.com>" \
-    org.opencontainers.image.licenses="GPL-3.0-or-later" \
-    org.opencontainers.image.base.name="ghcr.io/linuxserver/baseimage-alpine:3.20" \
-    org.opencontainers.image.created="${BUILD_DATE}" \
-    org.opencontainers.image.source="${REPO_URL}" \
-    org.opencontainers.image.revision="${VCS_REF}" \
-    org.opencontainers.image.version="${VERSION}"
+  org.opencontainers.image.title="NordLynx" \
+  org.opencontainers.image.description="A containerized client for NordLynx (NordVPN WireGuard protocol)" \
+  org.opencontainers.image.authors="Julien Hauseux <julien.hauseux@gmail.com>" \
+  org.opencontainers.image.licenses="GPL-3.0-or-later" \
+  org.opencontainers.image.base.name="ghcr.io/linuxserver/baseimage-alpine:3.20" \
+  org.opencontainers.image.created="${BUILD_DATE}" \
+  org.opencontainers.image.source="${REPO_URL}" \
+  org.opencontainers.image.revision="${VCS_REF}" \
+  org.opencontainers.image.version="${VERSION}"
 
 RUN \
   echo "**** install dependencies ****" && \
@@ -58,5 +58,5 @@ COPY /root /
 EXPOSE 51820/udp
     
 HEALTHCHECK \
-    --start-period=30s --start-interval=5s \
-    CMD /usr/local/bin/healthcheck
+  --start-period=30s --start-interval=5s \
+  CMD /usr/local/bin/healthcheck
