@@ -1,9 +1,25 @@
 # syntax=docker/dockerfile:1
 
 FROM ghcr.io/linuxserver/baseimage-alpine:3.20
-LABEL maintainer="Julien Hauseux <julien.hauseux@gmail.com>"
 
 ARG BUILD_DATE
+ARG REPO_URL
+ARG VCS_REF
+ARG VERSION
+
+LABEL \
+    org.opencontainers.image.title="NordLynx" \
+    org.opencontainers.image.description="A containerized client for NordLynx (NordVPN WireGuard protocol)" \
+    org.opencontainers.image.authors="Julien Hauseux <julien.hauseux@gmail.com>" \
+    org.opencontainers.image.vendor="Julien Hauseux" \
+    org.opencontainers.image.licenses="GPL-3.0-or-later" \
+    org.opencontainers.image.base.name="ghcr.io/linuxserver/baseimage-alpine:3.20" \
+    org.opencontainers.image.created="${BUILD_DATE}" \
+    org.opencontainers.image.source="${REPO_URL}" \
+    org.opencontainers.image.url="${REPO_URL}" \
+    org.opencontainers.image.documentation="${REPO_URL}/README.md" \
+    org.opencontainers.image.revision="${VCS_REF}" \
+    org.opencontainers.image.version="${VERSION}"
 
 RUN \
   echo "**** install dependencies ****" && \
@@ -37,12 +53,13 @@ RUN \
   echo "**** clean up ****" && \
   rm -rf \
     /tmp/*
-    
-HEALTHCHECK --start-period=30s --start-interval=5s \
-  CMD /usr/local/bin/healthcheck
 
 # add local files
 COPY /root /
 
 # ports and volumes
 EXPOSE 51820/udp
+    
+HEALTHCHECK \
+    --start-period=30s --start-interval=5s \
+    CMD /usr/local/bin/healthcheck
