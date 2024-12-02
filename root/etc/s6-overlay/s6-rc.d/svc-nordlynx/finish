@@ -1,0 +1,24 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+iface=${INTERFACE:-eth0}
+wg_iface=${WG_INTERFACE:-wg0}
+
+echo "[INFO] Stopping NordLynx..."
+
+echo "[INFO] Connection summary:"
+wg show "${wg_iface}"
+
+echo "[INFO] Tearing down WireGuard interface ${wg_iface}"
+wg-quick down "${wg_iface}"
+
+echo "[INFO] Cleaning up configuration files"
+rm -f "/config/wg_confs/${wg_iface}.conf"
+
+echo "[INFO] Removing network rules for WireGuard server"
+iptables -L OUTPUT -n | awk '$7 == "dpt:51820" {print $5}' | while read -r inet; do
+    iptables -D OUTPUT -o "${iface}" -d "${inet}" -p udp -m udp --dport 51820 -j ACCEPT
+    ip route del "${inet}"
+done
+
+echo "[INFO] NordLynx is down"

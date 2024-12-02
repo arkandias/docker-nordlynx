@@ -1,0 +1,19 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+iface=${INTERFACE:-eth0}
+
+if [ -n "$NET_LOCAL" ]; then
+    for inet in ${NET_LOCAL//[;,]/ }; do
+        echo "[INFO] Adding route and firewall rules for local network ${inet}"
+        # Add route to network if it doesn't exist yet
+        if ! ip -4 route show | grep -q "${inet}"; then
+            ip route add "$inet" via "$(ip -4 route show | awk '/^default/ {print $3}')" dev "$iface"
+        fi
+        # Allow traffic to/from this network
+        iptables -A INPUT -i "${iface}" -s "${inet}" -j ACCEPT
+        iptables -A OUTPUT -o "${iface}" -d "${inet}" -j ACCEPT
+        iptables -A FORWARD -i "${iface}" -d "${inet}" -j ACCEPT
+        iptables -A FORWARD -i "${iface}" -s "${inet}" -j ACCEPT
+    done
+fi
