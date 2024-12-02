@@ -17,11 +17,14 @@ jobs:
         id: vars
         run: |
           echo "date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
-          image_ref="ghcr.io/${{ github.repository_owner }}/nordlynx"
+          ghcr_ref="ghcr.io/${{ github.repository_owner }}/nordlynx"
+          dockerhub_ref="${{ github.repository_owner }}/nordlynx"
           if [[ $GITHUB_REF_TYPE == tag ]]; then
-            echo "tags=${image_ref}:${GITHUB_REF_NAME},${image_ref}:latest" >> $GITHUB_OUTPUT
+            echo "ghcr_tags=${ghcr_ref}:${GITHUB_REF_NAME},${ghcr_ref}:latest" >> $GITHUB_OUTPUT
+            echo "dockerhub_tags=${dockerhub_ref}:${GITHUB_REF_NAME},${dockerhub_ref}:latest" >> $GITHUB_OUTPUT
           else
-            echo "tags=${image_ref}:edge" >> $GITHUB_OUTPUT
+            echo "ghcr_tags=${ghcr_ref}:edge" >> $GITHUB_OUTPUT
+            echo "dockerhub_tags=${dockerhub_ref}:edge" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout repository
@@ -40,12 +43,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: jhauseux
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.vars.outputs.tags }}
+          tags: ${{ steps.vars.outputs.ghcr_tags }},${{ steps.vars.outputs.dockerhub_tags }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             BUILD_DATE=${{ steps.vars.outputs.date }}
