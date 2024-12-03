@@ -1,0 +1,26 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+wg_iface=${WG_INTERFACE:-wg0}
+max_seconds=${HEALTHCHECK_INTERVAL:-120}
+
+# Get timestamp of last handshake
+last_handshake=$(wg show "$wg_iface" latest-handshakes | awk '{print $2}')
+
+# If no handshake found, interface might be down
+if [[ -z "$last_handshake" ]]; then
+    echo "No handshakes found. WireGuard interface might be down" >&2
+    exit 1
+fi
+
+# Calculate seconds since last handshake
+now=$(date -u +%s)
+elapsed=$((now - last_handshake))
+
+if [[ $elapsed -gt $max_seconds ]]; then
+    echo "No handshakes in the last ${elapsed} seconds" >&2
+    exit 1
+fi
+
+echo "WireGuard tunnel is active (last handshake ${elapsed} seconds ago)"
+exit 0

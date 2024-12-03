@@ -1,0 +1,216 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+iface=${INTERFACE:-eth0}
+wg_iface=${WG_INTERFACE:-wg0}
+
+echo "[INFO] Starting NordLynx..."
+
+#
+# Private key
+#
+if [[ -z "${PRIVATE_KEY}" ]] && [[ -n "${FILE__PRIVATE_KEY}" ]]; then
+    echo "[INFO] Reading private key from file: ${FILE__PRIVATE_KEY}"
+    if [[ ! -f "${FILE__PRIVATE_KEY}" ]]; then
+        echo "[ERROR] File ${FILE__PRIVATE_KEY} does not exists"
+    fi
+    PRIVATE_KEY="$(head -n 1 "${FILE__PRIVATE_KEY}")" || {
+        echo "[ERROR] Failed to read private key from file: ${FILE__PRIVATE_KEY}. Please check file permissions" >&2
+        sleep infinity
+    }
+    if [[ -z "${PRIVATE_KEY}" ]]; then
+        echo "[ERROR] Failed to read private key from file: ${FILE__PRIVATE_KEY}. Please check file content (private key must be on the first line)" >&2
+    fi
+    echo "[SUCCESS] Private key loaded from file ${FILE__PRIVATE_KEY}"
+fi
+if [[ -z "${PRIVATE_KEY}" ]] && [[ -n "${TOKEN}" ]]; then
+    echo "[INFO] Attempting to retrieve private key using NordVPN token"
+    credentials="$(curl -Lsf -u token:"$TOKEN" "https://api.nordvpn.com/v1/users/services/credentials")" || {
+        echo "[ERROR] Failed to retrieve credentials from NordVPN API. Please make sure:" >&2
+        echo "        - Your token is valid" >&2
+        echo "        - You have internet connectivity" >&2
+        echo "        - NordVPN API is accessible" >&2
+        sleep infinity
+    }
+    PRIVATE_KEY="$(echo "${credentials}" | jq -r '.nordlynx_private_key')" || {
+        echo "[ERROR] Failed to extract private key from API response" >&2
+        sleep infinity
+    }
+    echo "[SUCCESS] Private key retrieved from NordVPN API"
+fi
+if [[ -z "${PRIVATE_KEY}" ]]; then
+    echo "[ERROR] No private key available. Please provide one of the following:" >&2
+    echo "        1. Set PRIVATE_KEY environment variable directly" >&2
+    echo "        2. Provide a file path in FILE__PRIVATE_KEY" >&2
+    echo "        3. Set TOKEN environment variable with your NordVPN token" >&2
+    sleep infinity
+fi
+echo "${PRIVATE_KEY}" | wg pubkey &>/dev/null || {
+    echo "[ERROR] Private key is not the correct length or format" >&2
+}
+
+#
+# Server selection
+#
+if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
+    # Temporarily allowing DNS traffic and HTTPS requests to NordVPN API
+    iptables -A OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
+    iptables -A OUTPUT -o "${iface}" -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
+
+    # Building up API query
+    api_query="https://api.nordvpn.com/v1/servers/recommendations?limit=1"
+    api_query="${api_query}&filters\[servers_technologies\]\[identifier\]=wireguard_udp"
+
+    # Selecting a country (optional)
+    if [[ -n ${COUNTRY_CODE} ]]; then
+        echo "[INFO] Looking up country: ${COUNTRY_CODE^^}"
+        country=$(curl -Lsf "https://api.nordvpn.com/v1/servers/countries" | jq -r ".[] | select(.code == \"${COUNTRY_CODE^^}\")") || {
+            echo "[ERROR] Failed to reach NordVPN API during country lookup. Please make sure:" >&2
+            echo "        - You have internet connectivity" >&2
+            echo "        - NordVPN API is accessible" >&2
+            sleep infinity
+        }
+        if [[ -n "${country}" ]]; then
+            echo "[SUCCESS] Country found: $(echo "${country}" | jq -r '.name') ($(echo "${country}" | jq -r '.code'))"
+            country_id=$(echo "${country}" | jq -r '.id')
+            api_query="${api_query}&filters\[country_id\]=${country_id}"
+        else
+            echo "[WARNING] Country code '${COUNTRY_CODE}' not found in NordVPN database (filter ignored)" >&2
+        fi
+        if [[ -n ${REGION} ]]; then
+            echo "[WARNING] Cannot use simultaneously COUNTRY_CODE and REGION (REGION='${REGION}' will be ignored)" >&2
+            unset REGION
+        fi
+    fi
+
+    # Selecting a category (optional)
+    if [[ -n ${CATEGORY} ]]; then
+        echo "[INFO] Processing category filter: ${CATEGORY}"
+        category=$(case "${CATEGORY,,}" in
+            *standard*)
+                echo "legacy_standard"
+                ;;
+            *p2p*)
+                echo "legacy_p2p"
+                ;;
+            *double*)
+                echo "legacy_double_vpn"
+                ;;
+            *obfuscated*)
+                echo "legacy_obfuscated_servers"
+                ;;
+            *onion*)
+                echo "legacy_onion_over_vpn"
+                ;;
+            esac)
+        if [[ -n "${category}" ]]; then
+            echo "[SUCCESS] Category matched: ${category}"
+            api_query="${api_query}&filters\[servers_groups\]\[identifier\]=${category}"
+        else
+            echo "[WARNING] Category '${CATEGORY}' not recognized (filter ignored)" >&2
+            echo "[INFO] Available categories: standard, p2p, double, obfuscated, onion" >&2
+        fi
+        if [[ -n ${REGION} ]]; then
+            echo "[WARNING] Cannot use simultaneously CATEGORY and REGION (REGION='${REGION}' will be ignored)" >&2
+            unset REGION
+        fi
+    fi
+
+    # Selecting a region (optional)
+    if [[ -n ${REGION} ]]; then
+        echo "[INFO] Processing region filter: ${REGION}"
+        region=$(case "${REGION,,}" in
+            *africa* | *middle*east* | *india*)
+                echo "africa_the_middle_east_and_india"
+                ;;
+            *asia*pacific*)
+                echo "asia_pacific"
+                ;;
+            *europe*)
+                echo "europe"
+                ;;
+            *america*)
+                echo "the_americas"
+                ;;
+            esac)
+        if [[ -n "${region}" ]]; then
+            echo "[SUCCESS] Region matched: ${region}"
+            api_query="${api_query}&filters\[servers_groups\]\[identifier\]=${region}"
+        else
+            echo "[WARNING] Region '${REGION}' not recognized (filter ignored)" >&2
+            echo "[INFO] Available regions: africa/middle-east/india, asia-pacific, europe, america" >&2
+        fi
+    fi
+
+    # Selecting a server
+    echo "[INFO] Querying NordVPN API for server recommendations"
+    server=$(curl --retry 3 -Lsf "${api_query}" | jq -r '.[0]') || {
+        echo "[ERROR] Failed to reach NordVPN API during server lookup. Please make sure:" >&2
+        echo "        - You have internet connectivity" >&2
+        echo "        - NordVPN API is accessible" >&2
+        sleep infinity
+    }
+    if [[ -z ${server} ]]; then
+        echo "[ERROR] No servers found matching your criteria. Check your filter settings:" >&2
+        echo "        - COUNTRY_CODE: ${COUNTRY_CODE:-not set}" >&2
+        echo "        - CATEGORY: ${CATEGORY:-not set}" >&2
+        echo "        - REGION: ${REGION:-not set}" >&2
+        sleep infinity
+    fi
+    echo "[SUCCESS] Server selected: $(echo "${server}" | jq -r '.hostname') ($(echo "${server}" | jq -r '.station'))"
+    PUBLIC_KEY=$(echo "${server}" | jq -r '.technologies[] | select( .identifier == "wireguard_udp" ) | .metadata[] | select( .name == "public_key" ) | .value')
+    ENDPOINT="$(echo "${server}" | jq -r '.station'):51820"
+
+    # Removing temporary firewall rules
+    for i in $(iptables -L OUTPUT -n --line-numbers | grep "dpt:53\|dpt:443" | awk '{print $1}' | sort -r); do
+        iptables -D OUTPUT "$i"
+    done
+fi
+
+#
+# WireGuard configuration
+#
+mkdir -p /config/wg_confs
+(umask 077 && {
+    cat > "/config/wg_confs/${wg_iface}.conf" <<-EOF
+[Interface]
+PrivateKey = ${PRIVATE_KEY}
+ListenPort = ${LISTEN_PORT:-51820}
+Address = ${ADDRESS:-10.5.0.2/32}
+DNS = ${DNS:-103.86.96.100, 103.86.99.100}
+MTU = ${MTU}
+Table = ${TABLE}
+PreUp = ${PRE_UP}
+PostUp = ${POST_UP}
+PreDown = ${PRE_DOWN}
+PostDown = ${POST_DOWN}
+
+[Peer]
+PublicKey = ${PUBLIC_KEY}
+Endpoint = ${ENDPOINT}
+AllowedIPs = ${ALLOWED_IPS:-0.0.0.0/1, 128.0.0.0/1}
+PersistentKeepalive = ${PERSISTENT_KEEPALIVE:-25}
+EOF
+} && sync)
+
+echo "[INFO] Adding network rules for WireGuard server"
+ip route add "${ENDPOINT%:*}" via "$(ip -4 route show | awk '/^default/ {print $3}')"
+iptables -A OUTPUT -o "${iface}" -d "${ENDPOINT%:*}" -p udp -m udp --dport 51820 -j ACCEPT
+
+echo "[INFO] Setting up WireGuard interface ${wg_iface}"
+if wg-quick up "${wg_iface}"; then
+    echo "
+    ╔═══════════════════════════════════╗
+    ║                                   ║
+    ║     **** NordLynx is up! ****     ║
+    ║                                   ║
+    ╚═══════════════════════════════════╝
+    "
+else
+    echo "[ERROR] Failed to set up WireGuard interface" >&2
+fi
+
+if [[ -n ${RECONNECT} ]]; then
+    echo "[INFO] Reconnection in ${RECONNECT}"
+fi
+sleep "${RECONNECT:-infinity}"

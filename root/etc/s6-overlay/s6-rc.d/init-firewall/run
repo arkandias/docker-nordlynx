@@ -1,0 +1,34 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# Check iptables
+if ! iptables -L &>/dev/null; then
+    echo "[ERROR] iptables check failed. Please ensure container has NET_ADMIN capability" >&2
+    sleep infinity
+fi
+
+# Reset chains
+iptables -F
+iptables -X
+
+# Set default policies to DROP
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD DROP
+
+if [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)" -eq 0 ]; then
+    echo "[WARNING] IPv6 is enabled. You should disable IPv6 in your container configuration:"
+    echo "Using docker-compose.yml:"
+    echo "    sysctls:"
+    echo "      - net.ipv6.conf.all.disable_ipv6=1"
+    echo "Or with docker run:"
+    echo "    --sysctl net.ipv6.conf.all.disable_ipv6=1"
+    echo "[INFO] Blocking all IPv6 traffic with ip6tables"
+    ip6tables -F
+    ip6tables -X
+    ip6tables -P INPUT DROP
+    ip6tables -P OUTPUT DROP
+    ip6tables -P FORWARD DROP
+fi
+
+echo "[INFO] Firewall initialized. All traffic is blocked by default"
