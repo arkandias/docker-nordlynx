@@ -1,19 +1,20 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-iface=${INTERFACE:-eth0}
-
 if [ -n "$NET_LOCAL" ]; then
     for inet in ${NET_LOCAL//[;,]/ }; do
-        echo "[INFO] Adding route and firewall rules for local network ${inet}"
-        # Add route to network if it doesn't exist yet
-        if ! ip -4 route show | grep -q "${inet}"; then
-            ip route add "$inet" via "$(ip -4 route show | awk '/^default/ {print $3}')" dev "$iface"
+        # Look up interface associated with subnet in routing table
+        iface=$(ip route get "${inet}" | awk 'NR==1 {for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}')
+
+        if [ -z "$iface" ]; then
+            echo "[WARNING] No interface found in routing table for subnet ${inet} (skipped)" >&2
+            continue
         fi
-        # Allow traffic to/from this network
+
+        echo "[INFO] Allowing inbound, outbound, and forwarded traffic for local network ${inet} on ${iface}"
         iptables -A INPUT -i "${iface}" -s "${inet}" -j ACCEPT
         iptables -A OUTPUT -o "${iface}" -d "${inet}" -j ACCEPT
-        iptables -A FORWARD -i "${iface}" -d "${inet}" -j ACCEPT
         iptables -A FORWARD -i "${iface}" -s "${inet}" -j ACCEPT
+        iptables -A FORWARD -i "${iface}" -d "${inet}" -j ACCEPT
     done
 fi
