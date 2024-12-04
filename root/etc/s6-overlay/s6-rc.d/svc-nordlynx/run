@@ -6,6 +6,11 @@ wg_iface=${WG_INTERFACE:-wg0}
 
 echo "[INFO] Starting NordLynx..."
 
+echo "[INFO] Temporarily allowing DNS requests (UDP/53) via ${iface}"
+iptables -A OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
+echo "[INFO] Temporarily allowing HTTPS requests (TCP/443) to NordVPN API via ${iface}"
+iptables -A OUTPUT -o "${iface}" -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
+
 #
 # Private key
 #
@@ -53,9 +58,6 @@ echo "${PRIVATE_KEY}" | wg pubkey &>/dev/null || {
 # Server selection
 #
 if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
-    # Temporarily allowing DNS traffic and HTTPS requests to NordVPN API
-    iptables -A OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
-    iptables -A OUTPUT -o "${iface}" -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
 
     # Building up API query
     api_query="https://api.nordvpn.com/v1/servers/recommendations?limit=1"
@@ -161,11 +163,11 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
     PUBLIC_KEY=$(echo "${server}" | jq -r '.technologies[] | select( .identifier == "wireguard_udp" ) | .metadata[] | select( .name == "public_key" ) | .value')
     ENDPOINT="$(echo "${server}" | jq -r '.station'):51820"
 
-    # Removing temporary firewall rules
-    for i in $(iptables -L OUTPUT -n --line-numbers | grep "dpt:53\|dpt:443" | awk '{print $1}' | sort -r); do
-        iptables -D OUTPUT "$i"
-    done
 fi
+
+echo "[INFO] Removing temporary firewall rules"
+iptables -D OUTPUT -o "${iface}" -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
+iptables -D OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
 
 #
 # WireGuard configuration

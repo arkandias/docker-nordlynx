@@ -4,6 +4,10 @@
 iface=${INTERFACE:-eth0}
 
 if [[ -n ${ALLOW_LIST} ]]; then
+
+    echo "[INFO] Temporarily allowing DNS requests (UDP/53) via ${iface}"
+    iptables -A OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
+
     for domain in ${ALLOW_LIST//[;,]/ }; do
         # Strip URL parts, keeping only the domain
         # e.g., https://example.com/path -> example.com
@@ -16,4 +20,8 @@ if [[ -n ${ALLOW_LIST} ]]; then
             echo "[WARNING] Cannot resolve domain '${domain}' (skipped)" >&2
         fi
     done
+
+    echo "[INFO] Removing temporary DNS rule"
+    iptables -D OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
+
 fi
