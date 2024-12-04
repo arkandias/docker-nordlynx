@@ -1,36 +1,18 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-iface=${INTERFACE:-eth0}
 wg_iface=${WG_INTERFACE:-wg0}
 
-# Get network interfaces, excluding lo,wg,tun,tap devices
-mapfile -t interfaces < <(ip -br link show | awk '$1 !~ "^(lo|wg|tun|tap)"{print $1}' | cut -d@ -f1)
-if [[ ! " ${interfaces[*]} " == *" ${iface} "* ]]; then
-    interfaces+=("${iface}")
-fi
+echo "[INFO] Allowing inbound and outbound traffic via loopback interface"
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
 
-for interface in "${interfaces[@]}"; do
-    inet="$(ip -4 -br addr show dev "${interface}" | awk '{print $3}')"
-    if [[ -n "$inet" ]]; then
-        echo "[INFO] Allowing all traffic on local network ${interface} ${inet}"
-        iptables -A INPUT -i "${interface}" -s "${inet}" -j ACCEPT
-        iptables -A OUTPUT -o "${interface}" -d "${inet}" -j ACCEPT
-        iptables -A FORWARD -i "${interface}" -d "${inet}" -j ACCEPT
-        iptables -A FORWARD -i "${interface}" -s "${inet}" -j ACCEPT
-    fi
-done
-
-echo "[INFO] Allowing traffic for established connections and related packets"
+echo "[INFO] Allowing inbound, outbound, and forwarded traffic for established and related connections"
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
-echo "[INFO] Allowing all traffic on loopback interface"
-iptables -A INPUT -i lo -j ACCEPT
-iptables -A OUTPUT -o lo -j ACCEPT
-iptables -A FORWARD -i lo -j ACCEPT
-
-echo "[INFO] Configuring iptables for WireGuard interface"
+echo "[INFO] Allowing outbound traffic via WireGuard interface ${wg_iface}"
 iptables -A OUTPUT -o "${wg_iface}" -j ACCEPT
+echo "[INFO] Enabling NAT masquerading for WireGuard traffic on interface ${wg_iface}"
 iptables -t nat -A POSTROUTING -o "${wg_iface}" -j MASQUERADE
