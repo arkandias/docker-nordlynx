@@ -28,7 +28,7 @@ Note: Alternatively, you can use this image with just an access token rather tha
 
 ## Limitations
 
-* IPv6 is not handled yet.
+* IPv6 is not handled (yet!). All IPv6 packets are blocked by the firewall.
 
 ## Usage
 
@@ -140,8 +140,8 @@ It is recommended to keep the default values unless you know what you are doing.
 
 |   Parameter    | Default | Description                                                                                                                                                    |
 |:--------------:|:-------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|  `INTERFACE`   | `eth0`  | The network interface to use inside the container.                                                                                                             |
-| `WG_INTERFACE` |  `wg0`  | The name of the WireGuard tunnel interface.                                                                                                                    |
+|  `INTERFACE`   | `eth0`  | The network interface used to establish the WireGuard connection.                                                                                              |
+| `WG_INTERFACE` |  `wg0`  | The name of the WireGuard interface to be created.                                                                                                             |
 |  `NET_LOCAL`   |         | A comma-separated list of IPv4 addresses with CIDR masks that should remain accessible while connected to the VPN (e.g., `192.168.1.0/24`, `10.0.0.0/8`).      |
 |  `ALLOW_LIST`  |         | A comma-separated list of domains that should be accessible through direct connection instead of the VPN tunnel (e.g., `an.example.com, another.example.com`). |
 
