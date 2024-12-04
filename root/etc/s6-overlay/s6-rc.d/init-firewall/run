@@ -1,17 +1,16 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-# Check iptables
 if ! iptables -L &>/dev/null; then
     echo "[ERROR] iptables check failed. Please ensure container has NET_ADMIN capability" >&2
     sleep infinity
 fi
 
-# Reset chains
+echo "[INFO] Resetting iptables (flushing chains and deleting custom chains)"
 iptables -F
 iptables -X
 
-# Set default policies to DROP
+echo "[INFO] Setting all chain policies to DROP"
 iptables -P INPUT DROP
 iptables -P OUTPUT DROP
 iptables -P FORWARD DROP
@@ -31,4 +30,4 @@ if [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)" -eq 0 ]; then
     ip6tables -P FORWARD DROP
 fi
 
-echo "[INFO] Firewall initialized. All traffic is blocked by default"
+echo "[SUCCESS] Firewall initialized. All traffic is blocked by default"

@@ -15,8 +15,8 @@ wg-quick down "${wg_iface}"
 echo "[INFO] Cleaning up configuration files"
 rm -f "/config/wg_confs/${wg_iface}.conf"
 
-echo "[INFO] Removing network rules for WireGuard server"
-iptables -L OUTPUT -n | awk '$7 == "dpt:51820" {print $5}' | while read -r inet; do
+echo "[INFO] Removing route and firewall rule for WireGuard server"
+iptables -L OUTPUT -n | awk '/udp dpt:51820/ {print $5}' | while read -r inet; do
     iptables -D OUTPUT -o "${iface}" -d "${inet}" -p udp -m udp --dport 51820 -j ACCEPT
     ip route del "${inet}"
 done

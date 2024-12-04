@@ -4,9 +4,9 @@
 # Check if WireGuard module is active by attempting to create a test interface
 ip link del dev test 2>/dev/null
 if ip link add dev test type wireguard 2>/dev/null; then
-  ip link del dev test
-  echo "[INFO] WireGuard module is active"
+    ip link del dev test
+    echo "[SUCCESS] WireGuard module is active"
 else
-  echo "[ERROR] WireGuard module is not active" >&2
-  sleep infinity
+    echo "[ERROR] WireGuard module is not active" >&2
+    sleep infinity
 fi

@@ -160,6 +160,7 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
         sleep infinity
     fi
     echo "[SUCCESS] Server selected: $(echo "${server}" | jq -r '.hostname') ($(echo "${server}" | jq -r '.station'))"
+
     PUBLIC_KEY=$(echo "${server}" | jq -r '.technologies[] | select( .identifier == "wireguard_udp" ) | .metadata[] | select( .name == "public_key" ) | .value')
     ENDPOINT="$(echo "${server}" | jq -r '.station'):51820"
 
@@ -174,7 +175,7 @@ iptables -D OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
 #
 mkdir -p /config/wg_confs
 (umask 077 && {
-    cat > "/config/wg_confs/${wg_iface}.conf" <<-EOF
+    cat >"/config/wg_confs/${wg_iface}.conf" <<-EOF
 [Interface]
 PrivateKey = ${PRIVATE_KEY}
 ListenPort = ${LISTEN_PORT:-51820}
@@ -195,7 +196,7 @@ PersistentKeepalive = ${PERSISTENT_KEEPALIVE:-25}
 EOF
 } && sync)
 
-echo "[INFO] Adding network rules for WireGuard server"
+echo "[INFO] Adding route and firewall rule for WireGuard server"
 ip route add "${ENDPOINT%:*}" via "$(ip -4 route show | awk '/^default/ {print $3}')"
 iptables -A OUTPUT -o "${iface}" -d "${ENDPOINT%:*}" -p udp -m udp --dport 51820 -j ACCEPT
 
