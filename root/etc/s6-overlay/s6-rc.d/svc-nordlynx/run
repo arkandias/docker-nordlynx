@@ -1,8 +1,8 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-iface=${INTERFACE:-eth0}
-wg_iface=${WG_INTERFACE:-wg0}
+iface="${INTERFACE:-eth0}"
+wg_iface="${WG_INTERFACE:-wg0}"
 
 # Function to add temporary firewall rules allowing NordVPN API calls
 add_tmp_net_rules() {
@@ -75,7 +75,7 @@ echo "${PRIVATE_KEY}" | wg pubkey &>/dev/null || {
 # Server selection
 #==========================================
 
-if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
+if [[ -z "${ENDPOINT}" || -z "${PUBLIC_KEY}" ]]; then
     add_tmp_net_rules
 
     # Building up API query
@@ -83,9 +83,9 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
     api_query="${api_query}&filters\[servers_technologies\]\[identifier\]=wireguard_udp"
 
     # Selecting a country (optional)
-    if [[ -n ${COUNTRY_CODE} ]]; then
+    if [[ -n "${COUNTRY_CODE}" ]]; then
         echo "[INFO] Looking up country: ${COUNTRY_CODE^^}"
-        country=$(curl -Lsf "https://api.nordvpn.com/v1/servers/countries" | jq -r ".[] | select(.code == \"${COUNTRY_CODE^^}\")") || {
+        country="$(curl -Lsf "https://api.nordvpn.com/v1/servers/countries" | jq -r ".[] | select(.code == \"${COUNTRY_CODE^^}\")")" || {
             echo "[ERROR] Failed to reach NordVPN API during country lookup. Please make sure:" >&2
             echo "        - You have internet connectivity" >&2
             echo "        - NordVPN API is accessible" >&2
@@ -93,21 +93,21 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
         }
         if [[ -n "${country}" ]]; then
             echo "[SUCCESS] Country found: $(echo "${country}" | jq -r '.name') ($(echo "${country}" | jq -r '.code'))"
-            country_id=$(echo "${country}" | jq -r '.id')
+            country_id="$(echo "${country}" | jq -r '.id')"
             api_query="${api_query}&filters\[country_id\]=${country_id}"
         else
             echo "[WARNING] Country code '${COUNTRY_CODE}' not found in NordVPN database (filter ignored)" >&2
         fi
-        if [[ -n ${REGION} ]]; then
+        if [[ -n "${REGION}" ]]; then
             echo "[WARNING] Cannot use simultaneously COUNTRY_CODE and REGION (REGION='${REGION}' will be ignored)" >&2
             unset REGION
         fi
     fi
 
     # Selecting a category (optional)
-    if [[ -n ${CATEGORY} ]]; then
+    if [[ -n "${CATEGORY}" ]]; then
         echo "[INFO] Processing category filter: ${CATEGORY}"
-        category=$(case "${CATEGORY,,}" in
+        category="$(case "${CATEGORY,,}" in
             *standard*)
                 echo "legacy_standard"
                 ;;
@@ -123,7 +123,7 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
             *onion*)
                 echo "legacy_onion_over_vpn"
                 ;;
-            esac)
+            esac)"
         if [[ -n "${category}" ]]; then
             echo "[SUCCESS] Category matched: ${category}"
             api_query="${api_query}&filters\[servers_groups\]\[identifier\]=${category}"
@@ -131,16 +131,16 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
             echo "[WARNING] Category '${CATEGORY}' not recognized (filter ignored)" >&2
             echo "[INFO] Available categories: standard, p2p, double, obfuscated, onion" >&2
         fi
-        if [[ -n ${REGION} ]]; then
+        if [[ -n "${REGION}" ]]; then
             echo "[WARNING] Cannot use simultaneously CATEGORY and REGION (REGION='${REGION}' will be ignored)" >&2
             unset REGION
         fi
     fi
 
     # Selecting a region (optional)
-    if [[ -n ${REGION} ]]; then
+    if [[ -n "${REGION}" ]]; then
         echo "[INFO] Processing region filter: ${REGION}"
-        region=$(case "${REGION,,}" in
+        region="$(case "${REGION,,}" in
             *africa* | *middle*east* | *india*)
                 echo "africa_the_middle_east_and_india"
                 ;;
@@ -153,7 +153,7 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
             *america*)
                 echo "the_americas"
                 ;;
-            esac)
+            esac)"
         if [[ -n "${region}" ]]; then
             echo "[SUCCESS] Region matched: ${region}"
             api_query="${api_query}&filters\[servers_groups\]\[identifier\]=${region}"
@@ -165,13 +165,13 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
 
     # Selecting a server
     echo "[INFO] Querying NordVPN API for server recommendations"
-    server=$(curl --retry 3 -Lsf "${api_query}" | jq -r '.[0]') || {
+    server="$(curl --retry 3 -Lsf "${api_query}" | jq -r '.[0]')" || {
         echo "[ERROR] Failed to reach NordVPN API during server lookup. Please make sure:" >&2
         echo "        - You have internet connectivity" >&2
         echo "        - NordVPN API is accessible" >&2
         sleep infinity
     }
-    if [[ -z ${server} ]]; then
+    if [[ -z "${server}" ]]; then
         echo "[ERROR] No servers found matching your criteria. Check your filter settings:" >&2
         echo "        - COUNTRY_CODE: ${COUNTRY_CODE:-not set}" >&2
         echo "        - CATEGORY: ${CATEGORY:-not set}" >&2
@@ -180,7 +180,7 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
     fi
     echo "[SUCCESS] Server selected: $(echo "${server}" | jq -r '.hostname') ($(echo "${server}" | jq -r '.station'))"
 
-    PUBLIC_KEY=$(echo "${server}" | jq -r '.technologies[] | select( .identifier == "wireguard_udp" ) | .metadata[] | select( .name == "public_key" ) | .value')
+    PUBLIC_KEY="$(echo "${server}" | jq -r '.technologies[] | select( .identifier == "wireguard_udp" ) | .metadata[] | select( .name == "public_key" ) | .value')"
     ENDPOINT="$(echo "${server}" | jq -r '.station'):51820"
 
     del_tmp_net_rules
@@ -240,7 +240,7 @@ else
     echo "[ERROR] Failed to set up WireGuard interface" >&2
 fi
 
-if [[ -n ${RECONNECT} ]]; then
+if [[ -n "${RECONNECT}" ]]; then
     echo "[INFO] Reconnection in ${RECONNECT}"
 fi
 sleep "${RECONNECT:-infinity}"

@@ -1,7 +1,7 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-if [[ -n ${ALLOW_LIST} ]]; then
+if [[ -n "${ALLOW_LIST}" ]]; then
     # Remove surrounding quotes if they exist
     ALLOW_LIST="${ALLOW_LIST#\"}" # Remove leading quote
     ALLOW_LIST="${ALLOW_LIST%\"}" # Remove trailing quote
@@ -12,7 +12,7 @@ if [[ -n ${ALLOW_LIST} ]]; then
     for domain in ${ALLOW_LIST//[;,]/ }; do
         # Strip URL parts, keeping only the domain
         # e.g., https://example.com/path -> example.com
-        domain=$(echo "${domain}" | sed 's/^.*:\/\///;s/\/.*$//')
+        domain="$(echo "${domain}" | sed 's/^.*:\/\///;s/\/.*$//')"
         # Check if domain can be resolved
         if getent hosts "$domain" &>/dev/null; then
             echo "[INFO] Allowing direct connection to ${domain}"
