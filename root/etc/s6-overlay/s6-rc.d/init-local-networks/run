@@ -1,20 +1,24 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-if [[ -n "$NET_LOCAL" ]]; then
+iface="${INTERFACE:-eth0}"
+
+if [[ -n "${NET_LOCAL}" ]]; then
     # Remove surrounding quotes if they exist
     NET_LOCAL="${NET_LOCAL#\"}" # Remove leading quote
     NET_LOCAL="${NET_LOCAL%\"}" # Remove trailing quote
 
+    # Get default gateway on specified interface
+    gateway="$(ip route show dev "${iface}" | awk '/default/ { print $3; exit }')"
     for inet in ${NET_LOCAL//[;,]/ }; do
-        # Look up interface associated with subnet in routing table
-        iface=$(ip route get "${inet%/*}" | awk 'NR==1 {for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')
-
-        if [[ -z "$iface" ]]; then
-            echo "[WARNING] No interface found in routing table for subnet ${inet} (skipped)" >&2
-            continue
+        if ! ip route show | grep -q "${inet}"; then
+            if [[ -z "$gateway" ]]; then
+                echo "[WARNING] No route for local network ${inet} and no default gateway on ${iface} (skipped)" >&2
+                continue
+            fi
+            echo "[INFO] Adding route to local network ${inet} via ${gateway} on ${iface}"
+            ip route add "${inet}" via "${gateway}" dev "${iface}"
         fi
-
         echo "[INFO] Allowing inbound, outbound, and forwarded traffic for local network ${inet} on ${iface}"
         iptables -A INPUT -i "${iface}" -s "${inet}" -j ACCEPT
         iptables -A OUTPUT -o "${iface}" -d "${inet}" -j ACCEPT
