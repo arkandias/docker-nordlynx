@@ -15,7 +15,7 @@ iptables -P INPUT DROP
 iptables -P OUTPUT DROP
 iptables -P FORWARD DROP
 
-if [ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)" -eq 0 ]; then
+if [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6)" -eq 0 ]]; then
     echo "[WARNING] IPv6 is enabled. You should disable IPv6 in your container configuration:"
     echo "Using docker-compose.yml:"
     echo "    sysctls:"

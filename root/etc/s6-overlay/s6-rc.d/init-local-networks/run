@@ -1,16 +1,16 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-if [ -n "$NET_LOCAL" ]; then
+if [[ -n "$NET_LOCAL" ]]; then
     # Remove surrounding quotes if they exist
     NET_LOCAL="${NET_LOCAL#\"}" # Remove leading quote
     NET_LOCAL="${NET_LOCAL%\"}" # Remove trailing quote
 
     for inet in ${NET_LOCAL//[;,]/ }; do
         # Look up interface associated with subnet in routing table
-        iface=$(ip route get "${inet%/*}" | awk 'NR==1 {for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}')
+        iface=$(ip route get "${inet%/*}" | awk 'NR==1 {for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')
 
-        if [ -z "$iface" ]; then
+        if [[ -z "$iface" ]]; then
             echo "[WARNING] No interface found in routing table for subnet ${inet} (skipped)" >&2
             continue
         fi
