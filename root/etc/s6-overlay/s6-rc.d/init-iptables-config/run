@@ -7,6 +7,16 @@ echo "[INFO] Allowing inbound and outbound traffic via loopback interface"
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A OUTPUT -o lo -j ACCEPT
 
+while read -r iface _ inet; do
+    [[ $iface =~ ^(lo|wg|tun|tap) ]] && continue
+    iface="${iface%%@*}"
+    echo "[INFO] Allowing inbound, outbound, and forwarded traffic for ${inet} on ${iface}"
+    iptables -A INPUT -i "$iface" -s "$inet" -j ACCEPT
+    iptables -A OUTPUT -o "$iface" -d "$inet" -j ACCEPT
+    iptables -A FORWARD -i "$iface" -s "$inet" -j ACCEPT
+    iptables -A FORWARD -i "$iface" -d "$inet" -j ACCEPT
+done < <(ip -4 -br addr show up)
+
 echo "[INFO] Allowing inbound, outbound, and forwarded traffic for established and related connections"
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
@@ -14,5 +24,5 @@ iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 echo "[INFO] Allowing outbound traffic via WireGuard interface ${wg_iface}"
 iptables -A OUTPUT -o "${wg_iface}" -j ACCEPT
-echo "[INFO] Enabling NAT masquerading for WireGuard traffic on interface ${wg_iface}"
+echo "[INFO] Enabling NAT masquerading for WireGuard traffic on ${wg_iface}"
 iptables -t nat -A POSTROUTING -o "${wg_iface}" -j MASQUERADE
