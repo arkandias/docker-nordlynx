@@ -4,16 +4,27 @@
 iface=${INTERFACE:-eth0}
 wg_iface=${WG_INTERFACE:-wg0}
 
+# Function to add temporary firewall rules allowing NordVPN API calls
+add_tmp_net_rules() {
+    echo "[INFO] Temporarily allowing DNS requests (UDP/53)"
+    iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+    echo "[INFO] Temporarily allowing HTTPS requests (TCP/443) to NordVPN API"
+    iptables -A OUTPUT -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
+}
+
+# Function to remove temporary firewall rules
+del_tmp_net_rules() {
+    echo "[INFO] Removing temporary firewall rules"
+    iptables -D OUTPUT -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
+    iptables -D OUTPUT -p udp --dport 53 -j ACCEPT
+}
+
 echo "[INFO] Starting NordLynx..."
 
-echo "[INFO] Temporarily allowing DNS requests (UDP/53) via ${iface}"
-iptables -A OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
-echo "[INFO] Temporarily allowing HTTPS requests (TCP/443) to NordVPN API via ${iface}"
-iptables -A OUTPUT -o "${iface}" -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
-
-#
+#==========================================
 # Private key
-#
+#==========================================
+
 if [[ -z "${PRIVATE_KEY}" ]] && [[ -n "${FILE__PRIVATE_KEY}" ]]; then
     echo "[INFO] Reading private key from file: ${FILE__PRIVATE_KEY}"
     if [[ ! -f "${FILE__PRIVATE_KEY}" ]]; then
@@ -28,7 +39,9 @@ if [[ -z "${PRIVATE_KEY}" ]] && [[ -n "${FILE__PRIVATE_KEY}" ]]; then
     fi
     echo "[SUCCESS] Private key loaded from file ${FILE__PRIVATE_KEY}"
 fi
+
 if [[ -z "${PRIVATE_KEY}" ]] && [[ -n "${TOKEN}" ]]; then
+    add_tmp_net_rules
     echo "[INFO] Attempting to retrieve private key using NordVPN token"
     credentials="$(curl -Lsf -u token:"$TOKEN" "https://api.nordvpn.com/v1/users/services/credentials")" || {
         echo "[ERROR] Failed to retrieve credentials from NordVPN API. Please make sure:" >&2
@@ -42,7 +55,9 @@ if [[ -z "${PRIVATE_KEY}" ]] && [[ -n "${TOKEN}" ]]; then
         sleep infinity
     }
     echo "[SUCCESS] Private key retrieved from NordVPN API"
+    del_tmp_net_rules
 fi
+
 if [[ -z "${PRIVATE_KEY}" ]]; then
     echo "[ERROR] No private key available. Please provide one of the following:" >&2
     echo "        1. Set PRIVATE_KEY environment variable directly" >&2
@@ -50,14 +65,18 @@ if [[ -z "${PRIVATE_KEY}" ]]; then
     echo "        3. Set TOKEN environment variable with your NordVPN token" >&2
     sleep infinity
 fi
+
 echo "${PRIVATE_KEY}" | wg pubkey &>/dev/null || {
     echo "[ERROR] Private key is not the correct length or format" >&2
+    sleep infinity
 }
 
-#
+#==========================================
 # Server selection
-#
+#==========================================
+
 if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
+    add_tmp_net_rules
 
     # Building up API query
     api_query="https://api.nordvpn.com/v1/servers/recommendations?limit=1"
@@ -164,15 +183,13 @@ if [[ -z ${ENDPOINT} || -z ${PUBLIC_KEY} ]]; then
     PUBLIC_KEY=$(echo "${server}" | jq -r '.technologies[] | select( .identifier == "wireguard_udp" ) | .metadata[] | select( .name == "public_key" ) | .value')
     ENDPOINT="$(echo "${server}" | jq -r '.station'):51820"
 
+    del_tmp_net_rules
 fi
 
-echo "[INFO] Removing temporary firewall rules"
-iptables -D OUTPUT -o "${iface}" -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
-iptables -D OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
-
-#
+#==========================================
 # WireGuard configuration
-#
+#==========================================
+
 mkdir -p /config/wg_confs
 (umask 077 && {
     cat >"/config/wg_confs/${wg_iface}.conf" <<-EOF
@@ -197,7 +214,7 @@ EOF
 } && sync)
 
 echo "[INFO] Adding route and firewall rule for WireGuard server"
-ip route add "${ENDPOINT%:*}" via "$(ip -4 route show | awk '/^default/ {print $3}')"
+ip route add "${ENDPOINT%:*}" via "${iface}"
 iptables -A OUTPUT -o "${iface}" -d "${ENDPOINT%:*}" -p udp -m udp --dport 51820 -j ACCEPT
 
 echo "[INFO] Setting up WireGuard interface ${wg_iface}"
