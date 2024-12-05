@@ -1,12 +1,13 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
 
-iface=${INTERFACE:-eth0}
-
 if [[ -n ${ALLOW_LIST} ]]; then
+    # Remove surrounding quotes if they exist
+    ALLOW_LIST="${ALLOW_LIST#\"}" # Remove leading quote
+    ALLOW_LIST="${ALLOW_LIST%\"}" # Remove trailing quote
 
-    echo "[INFO] Temporarily allowing DNS requests (UDP/53) via ${iface}"
-    iptables -A OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
+    echo "[INFO] Temporarily allowing DNS requests (UDP/53)"
+    iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
 
     for domain in ${ALLOW_LIST//[;,]/ }; do
         # Strip URL parts, keeping only the domain
@@ -15,13 +16,12 @@ if [[ -n ${ALLOW_LIST} ]]; then
         # Check if domain can be resolved
         if getent hosts "$domain" &>/dev/null; then
             echo "[INFO] Allowing direct connection to ${domain}"
-            iptables -A OUTPUT -o "${iface}" -d "${domain}" -j ACCEPT
+            iptables -A OUTPUT -d "${domain}" -j ACCEPT
         else
             echo "[WARNING] Cannot resolve domain '${domain}' (skipped)" >&2
         fi
     done
 
     echo "[INFO] Removing temporary DNS rule"
-    iptables -D OUTPUT -o "${iface}" -p udp --dport 53 -j ACCEPT
-
+    iptables -D OUTPUT -p udp --dport 53 -j ACCEPT
 fi
