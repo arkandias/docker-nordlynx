@@ -14,11 +14,11 @@ if [[ -n "${ALLOW_LIST}" ]]; then
         # e.g., https://example.com/path -> example.com
         domain="$(echo "${domain}" | sed 's/^.*:\/\///;s/\/.*$//')"
         # Check if domain can be resolved
-        if getent hosts "$domain" &>/dev/null; then
+        if getent hosts "${domain}" &>/dev/null; then
             echo "[INFO] Allowing direct connection to ${domain}"
             iptables -A OUTPUT -d "${domain}" -j ACCEPT
         else
-            echo "[WARNING] Cannot resolve domain '${domain}' (skipped)" >&2
+            echo "[WARNING] Cannot resolve domain ${domain} (skipped)" >&2
         fi
     done
 
