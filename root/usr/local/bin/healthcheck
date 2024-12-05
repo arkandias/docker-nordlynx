@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 
 wg_iface="${WG_INTERFACE:-wg0}"
-max_seconds="${HEALTHCHECK_INTERVAL:-120}"
+max_seconds="120"
 
 # Get timestamp of last handshake
 last_handshake="$(wg show "${wg_iface}" latest-handshakes | awk '{print $2; exit}')"
