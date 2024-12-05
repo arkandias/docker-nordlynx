@@ -1,1 +1,1 @@
-/etc/s6-overlay/s6-rc.d/init-firewall/run
+/etc/s6-overlay/s6-rc.d/init-nordlynx-iptables-init/run
