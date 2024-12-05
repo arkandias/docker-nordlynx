@@ -213,8 +213,18 @@ PersistentKeepalive = ${PERSISTENT_KEEPALIVE:-25}
 EOF
 } && sync)
 
-echo "[INFO] Adding route and firewall rule for WireGuard server"
-ip route add "${ENDPOINT%:*}" via "${iface}"
+# Get default gateway on specified interface
+gateway="$(ip route show dev "${iface}" | awk '/default/ { print $3; exit }')"
+
+if [[ -z "${gateway}" ]]; then
+    echo "[ERROR] No default gateway found on interface ${iface}" >&2
+    sleep infinity
+fi
+
+echo "[INFO] Adding route to WireGuard server ${ENDPOINT%:*} via ${gateway} on ${iface}"
+ip route add "${ENDPOINT%:*}" via "${gateway}" dev "${iface}"
+
+echo "[INFO] Allowing WireGuard connection (UDP/51820) to ${ENDPOINT%:*} on ${iface}"
 iptables -A OUTPUT -o "${iface}" -d "${ENDPOINT%:*}" -p udp -m udp --dport 51820 -j ACCEPT
 
 echo "[INFO] Setting up WireGuard interface ${wg_iface}"
