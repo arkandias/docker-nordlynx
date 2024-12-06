@@ -8,6 +8,7 @@ wg_iface="${WG_INTERFACE:-wg0}"
 add_tmp_net_rules() {
     echo "[INFO] Temporarily allowing DNS requests (UDP/53)"
     iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+    iptables -A INPUT -p udp --sport 53 -j ACCEPT
     echo "[INFO] Temporarily allowing HTTPS requests (TCP/443) to NordVPN API"
     iptables -A OUTPUT -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
 }
@@ -17,6 +18,7 @@ del_tmp_net_rules() {
     echo "[INFO] Removing temporary firewall rules"
     iptables -D OUTPUT -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
     iptables -D OUTPUT -p udp --dport 53 -j ACCEPT
+    iptables -D INPUT -p udp --sport 53 -j ACCEPT
 }
 
 echo "[INFO] Starting NordLynx..."
