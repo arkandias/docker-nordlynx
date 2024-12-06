@@ -4,21 +4,42 @@
 iface="${INTERFACE:-eth0}"
 wg_iface="${WG_INTERFACE:-wg0}"
 
+manage_iptables_rule() {
+    ACTION=$1  # "add" or "delete"
+    IP=$2      # IP address for NordVPN API (empty for DNS rules)
+
+    if [[ "$ACTION" == "add" ]]; then
+        IPTABLES_CMD="-A"
+    elif [[ "$ACTION" == "delete" ]]; then
+        IPTABLES_CMD="-D"
+    else
+        echo "[ERROR] Invalid action: $ACTION"
+        exit 1
+    fi
+
+    # DNS rules (allow all DNS traffic)
+    iptables $IPTABLES_CMD OUTPUT -p udp --dport 53 -j ACCEPT
+    iptables $IPTABLES_CMD INPUT -p udp --sport 53 -j ACCEPT
+
+    # HTTPS rules for NordVPN API
+    API_IPS=$(nslookup "api.nordvpn.com" | awk '/^Address: / {print $2}')
+    # Add iptables rules for each resolved IP
+    for IP in $API_IPS; do
+        iptables $IPTABLES_CMD OUTPUT -d $IP -p tcp --dport 443 -j ACCEPT
+        iptables $IPTABLES_CMD INPUT -s $IP -p tcp --sport 443 -j ACCEPT
+    done
+}
+
 # Function to add temporary firewall rules allowing NordVPN API calls
 add_tmp_net_rules() {
-    echo "[INFO] Temporarily allowing DNS requests (UDP/53)"
-    iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
-    iptables -A INPUT -p udp --sport 53 -j ACCEPT
-    echo "[INFO] Temporarily allowing HTTPS requests (TCP/443) to NordVPN API"
-    iptables -A OUTPUT -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
+    echo "[INFO] Temporarily allowing DNS requests (UDP/53) and HTTPS requests (TCP/443) to NordVPN API"
+    manage_iptables_rule add
 }
 
 # Function to remove temporary firewall rules
 del_tmp_net_rules() {
     echo "[INFO] Removing temporary firewall rules"
-    iptables -D OUTPUT -d api.nordvpn.com -p tcp --dport 443 -j ACCEPT
-    iptables -D OUTPUT -p udp --dport 53 -j ACCEPT
-    iptables -D INPUT -p udp --sport 53 -j ACCEPT
+    manage_iptables_rule delete
 }
 
 echo "[INFO] Starting NordLynx..."
