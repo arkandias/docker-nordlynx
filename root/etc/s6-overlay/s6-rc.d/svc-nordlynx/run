@@ -4,9 +4,9 @@
 iface="${INTERFACE:-eth0}"
 wg_iface="${WG_INTERFACE:-wg0}"
 
-manage_iptables_rule() {
+manage_tmp_net_rules() {
     ACTION=$1  # "add" or "delete"
-    IP=$2      # IP address for NordVPN API (empty for DNS rules)
+    API_IPS=$2 # Space-separated list of NordVPN API IPs (empty during "add" for DNS rules)
 
     if [[ "$ACTION" == "add" ]]; then
         IPTABLES_CMD="-A"
@@ -21,25 +21,51 @@ manage_iptables_rule() {
     iptables $IPTABLES_CMD OUTPUT -p udp --dport 53 -j ACCEPT
     iptables $IPTABLES_CMD INPUT -p udp --sport 53 -j ACCEPT
 
-    # HTTPS rules for NordVPN API
-    API_IPS=$(nslookup "api.nordvpn.com" | awk '/^Address: / {print $2}')
-    # Add iptables rules for each resolved IP
-    for IP in $API_IPS; do
-        iptables $IPTABLES_CMD OUTPUT -d $IP -p tcp --dport 443 -j ACCEPT
-        iptables $IPTABLES_CMD INPUT -s $IP -p tcp --sport 443 -j ACCEPT
-    done
+    # HTTPS rules for NordVPN API (if IPs are provided)
+    if [[ -n "$API_IPS" ]]; then
+        for IP in $API_IPS; do
+            iptables $IPTABLES_CMD OUTPUT -d $IP -p tcp --dport 443 -j ACCEPT
+            iptables $IPTABLES_CMD INPUT -s $IP -p tcp --sport 443 -j ACCEPT
+        done
+    fi
+}
+
+# Function to resolve NordVPN API IPs
+resolve_api_ips() {
+    nslookup "api.nordvpn.com" | awk '/^Address: / {print $2}'
 }
 
 # Function to add temporary firewall rules allowing NordVPN API calls
 add_tmp_net_rules() {
-    echo "[INFO] Temporarily allowing DNS requests (UDP/53) and HTTPS requests (TCP/443) to NordVPN API"
-    manage_iptables_rule add
+    echo "[INFO] Adding temporary DNS rules to allow DNS resolution"
+    manage_tmp_net_rules add
+
+    echo "[INFO] Resolving NordVPN API IPs"
+    API_IPS=$(resolve_api_ips)
+    if [[ -z "$API_IPS" ]]; then
+        echo "[ERROR] Failed to resolve NordVPN API IPs"
+        del_tmp_net_rules
+        exit 1
+    fi
+
+    echo "[INFO] Adding HTTPS rules for NordVPN API IPs"
+    manage_tmp_net_rules add "$API_IPS"
 }
 
 # Function to remove temporary firewall rules
 del_tmp_net_rules() {
-    echo "[INFO] Removing temporary firewall rules"
-    manage_iptables_rule delete
+    echo "[INFO] Resolving NordVPN API IPs for cleanup"
+    API_IPS=$(resolve_api_ips)
+
+    if [[ -n "$API_IPS" ]]; then
+        echo "[INFO] Removing HTTPS rules for NordVPN API IPs"
+        manage_tmp_net_rules delete "$API_IPS"
+    else
+        echo "[WARNING] Failed to resolve NordVPN API IPs for cleanup. Removing DNS rules only."
+    fi
+
+    echo "[INFO] Removing DNS rules"
+    manage_tmp_net_rules delete
 }
 
 echo "[INFO] Starting NordLynx..."
