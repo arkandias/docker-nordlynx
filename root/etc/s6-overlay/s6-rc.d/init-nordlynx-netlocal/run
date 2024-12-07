@@ -12,7 +12,7 @@ if [[ -n "${NET_LOCAL}" ]]; then
     gateway="$(ip route show dev "${iface}" | awk '/default/ { print $3; exit }')"
     for inet in ${NET_LOCAL//[;,]/ }; do
         if ! ip route show | grep -q "${inet}"; then
-            if [[ -z "$gateway" ]]; then
+            if [[ -z "${gateway}" ]]; then
                 echo "[WARNING] No route for local network ${inet} and no default gateway on ${iface} (skipped)" >&2
                 continue
             fi

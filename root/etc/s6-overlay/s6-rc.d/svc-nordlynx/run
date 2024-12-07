@@ -43,7 +43,7 @@ fi
 if [[ -z "${PRIVATE_KEY}" ]] && [[ -n "${TOKEN}" ]]; then
     add_tmp_net_rules
     echo "[INFO] Attempting to retrieve private key using NordVPN token"
-    credentials="$(curl -Lsf -u token:"$TOKEN" "https://api.nordvpn.com/v1/users/services/credentials")" || {
+    credentials="$(curl -Lsf -u token:"${TOKEN}" "https://api.nordvpn.com/v1/users/services/credentials")" || {
         echo "[ERROR] Failed to retrieve credentials from NordVPN API. Please make sure:" >&2
         echo "        - Your token is valid" >&2
         echo "        - You have internet connectivity" >&2

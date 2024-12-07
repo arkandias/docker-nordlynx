@@ -8,13 +8,13 @@ iptables -A INPUT -i lo -j ACCEPT
 iptables -A OUTPUT -o lo -j ACCEPT
 
 while read -r iface _ inet; do
-    [[ $iface =~ ^(lo|wg|tun|tap) ]] && continue
+    [[ "${iface}" =~ ^(lo|wg|tun|tap) ]] && continue
     iface="${iface%%@*}"
     echo "[INFO] Allowing inbound, outbound, and forwarded traffic for ${inet} on ${iface}"
-    iptables -A INPUT -i "$iface" -s "$inet" -j ACCEPT
-    iptables -A OUTPUT -o "$iface" -d "$inet" -j ACCEPT
-    iptables -A FORWARD -i "$iface" -s "$inet" -j ACCEPT
-    iptables -A FORWARD -i "$iface" -d "$inet" -j ACCEPT
+    iptables -A INPUT -i "${iface}" -s "${inet}" -j ACCEPT
+    iptables -A OUTPUT -o "${iface}" -d "${inet}" -j ACCEPT
+    iptables -A FORWARD -i "${iface}" -s "${inet}" -j ACCEPT
+    iptables -A FORWARD -i "${iface}" -d "${inet}" -j ACCEPT
 done < <(ip -4 -br addr show up)
 
 echo "[INFO] Allowing inbound, outbound, and forwarded traffic for established and related connections"
