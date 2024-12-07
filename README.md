@@ -49,7 +49,7 @@ services:
       - TZ=Europe/Paris
       - PRIVATE_KEY=[redacted] # required
       - COUNTRY_CODE=FR
-      - CATEGORY=legacy_standard
+      - CATEGORY=standard
 ```
 
 ### Docker CLI
@@ -64,7 +64,7 @@ docker run \
   -e TZ=Europe/Paris \
   -e PRIVATE_KEY=[redacted] \
   -e COUNTRY_CODE=FR \
-  -e CATEGORY=legacy_standard \
+  -e CATEGORY=standard \
   ghcr.io/arkandias/nordlynx:latest
 ```
 
@@ -89,7 +89,7 @@ services:
       - TZ=Europe/Paris
       - PRIVATE_KEY=[redacted] # required
       - COUNTRY_CODE=FR
-      - CATEGORY=legacy_standard
+      - CATEGORY=standard
     ports:
       - "3000:3000" # Firefox desktop GUI
       - "3001:3001" # Firefox desktop GUI HTTPS
