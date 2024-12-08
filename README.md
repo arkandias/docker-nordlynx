@@ -38,6 +38,7 @@ Note: Alternatively, you can use this image with just an access token rather tha
 services:
   nordlynx:
     image: ghcr.io/arkandias/nordlynx:latest
+    container_name: nordlynx
     cap_add:
       - NET_ADMIN # required
     sysctls:
@@ -56,6 +57,7 @@ services:
 
 ```bash
 docker run \
+  --name=nordlynx \
   --cap-add=NET_ADMIN \
   --sysctl net.ipv4.conf.all.src_valid_mark=1 \
   --sysctl net.ipv6.conf.all.disable_ipv6=1 \
