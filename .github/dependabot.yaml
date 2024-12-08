@@ -4,9 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    # Optional configurations:
     labels:
       - "dependencies"
       - "actions"
+      - "automated"
     commit-message:
       prefix: "chore"
