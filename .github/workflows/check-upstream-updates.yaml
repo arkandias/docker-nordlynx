@@ -1,0 +1,50 @@
+name: Check Upstream Updates
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/linuxserver/docker-wireguard.git
+          git fetch upstream
+
+      - name: Check for updates
+        id: check
+        run: |
+          BEHIND_BY=$(git rev-list --count HEAD..upstream/main)
+          echo "behind_by=$BEHIND_BY" >> $GITHUB_OUTPUT
+          if [ "$BEHIND_BY" -gt 0 ]; then
+            echo "updates_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "updates_available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue if updates available
+        if: steps.check.outputs.updates_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const behindBy = ${{ steps.check.outputs.behind_by }};
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.name,
+              title: `⚠️ Repository is ${behindBy} commits behind upstream`,
+              body: `Your fork is currently ${behindBy} commits behind the upstream repository.
+              \nYou may want to sync your fork to get the latest changes.
+              \nTo sync: 
+              \n1. \`git fetch upstream\`
+              \n2. \`git checkout main\`
+              \n3. \`git merge upstream/main\`
+              \n4. \`git push origin main\``
+            });
