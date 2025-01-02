@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM ghcr.io/linuxserver/baseimage-alpine:3.20
+FROM ghcr.io/linuxserver/baseimage-alpine:3.21
 
 # set version label
 ARG BUILD_DATE
@@ -26,6 +26,10 @@ LABEL \
   org.opencontainers.image.documentation="https://github.com/arkandias/docker-nordlynx/README.md"
 
 RUN \
+  if [ -z ${WIREGUARD_RELEASE+x} ]; then \
+  WIREGUARD_RELEASE=$(curl -sL "http://dl-cdn.alpinelinux.org/alpine/v3.21/main/x86_64/APKINDEX.tar.gz" | tar -xz -C /tmp \
+    && awk '/^P:wireguard-tools$/,/V:/' /tmp/APKINDEX | sed -n 2p | sed 's/^V://'); \
+  fi && \
   echo "**** install dependencies ****" && \
   apk add --no-cache \
     bc \
@@ -41,7 +45,7 @@ RUN \
     libqrencode-tools \
     net-tools \
     openresolv \
-    wireguard-tools && \
+    wireguard-tools==${WIREGUARD_RELEASE} && \
   echo "wireguard" >> /etc/modules && \
   cd /sbin && \
   for i in ! !-save !-restore; do \
