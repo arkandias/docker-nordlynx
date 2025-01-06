@@ -22,7 +22,7 @@ jobs:
       - name: Check for updates
         id: check
         run: |
-          BEHIND_BY=$(git rev-list --count HEAD..upstream/main)
+          BEHIND_BY=$(git rev-list --count HEAD..upstream/master)
           echo "behind_by=$BEHIND_BY" >> $GITHUB_OUTPUT
           if [ "$BEHIND_BY" -gt 0 ]; then
             echo "updates_available=true" >> $GITHUB_OUTPUT
@@ -44,7 +44,7 @@ jobs:
               \nYou may want to sync your fork to get the latest changes.
               \nTo sync: 
               \n1. \`git fetch upstream\`
-              \n2. \`git checkout main\`
-              \n3. \`git merge upstream/main\`
-              \n4. \`git push origin main\``
+              \n2. \`git checkout master\`
+              \n3. \`git merge upstream/master\`
+              \n4. \`git push origin master\``
             });
