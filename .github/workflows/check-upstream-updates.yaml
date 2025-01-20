@@ -35,16 +35,18 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const behindBy = ${{ steps.check.outputs.behind_by }};
+            const [owner, repo] = '${{ github.repository }}'.split('/');
+            const behindBy = parseInt('${{ steps.check.outputs.behind_by }}');
+            
             await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.name,
+              owner,
+              repo,
               title: `⚠️ Repository is ${behindBy} commits behind upstream`,
               body: `Your fork is currently ${behindBy} commits behind the upstream repository.
-              \nYou may want to sync your fork to get the latest changes.
-              \nTo sync: 
-              \n1. \`git fetch upstream\`
-              \n2. \`git checkout master\`
-              \n3. \`git merge upstream/master\`
-              \n4. \`git push origin master\``
+
+              To sync your fork:
+              1. \`git fetch upstream\`
+              2. \`git checkout master\`
+              3. \`git merge upstream/master\`
+              4. \`git push origin master\``
             });
