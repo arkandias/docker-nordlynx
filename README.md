@@ -4,11 +4,6 @@ A Docker container enabling secure connections to NordVPN via NordLynx (NordVPN 
 on [linuxserver/wireguard][linuxserver] image and building upon [bubuntux/nordlynx][bubuntux]. Special thanks
 to [@bubuntux](https://github.com/bubuntux) for his original work on NordLynx containerization.
 
-### ⚠️ Known Issue
-
-v1.2 was affected by an upstream issue from linuxserver/wireguard with iptables compatibility in Alpine 3.21
-(linuxserver/docker-wireguard#375). This was fixed in v1.3.
-
 ## Prerequisites
 
 ### WireGuard
