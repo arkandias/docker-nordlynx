@@ -67,7 +67,7 @@ COPY /root /
 
 # ports and volumes
 EXPOSE 51820/udp
-    
+
 HEALTHCHECK \
   --start-period=30s --start-interval=5s \
   CMD /usr/local/bin/healthcheck
