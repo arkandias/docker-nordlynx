@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Bumped Alpine image to 3.23 again
 - Revert Alpine image to 3.22
 - Bumped Alpine image to 3.23
 - Bumped Alpine image to 3.22 and removed iptables-legacy
