@@ -9,23 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added this changelog
+- Added `init-nordlynx-resolvconf` s6 service to initialize `openresolv` and take control of `resolv.conf`. Upstream
+  scoped their equivalent workaround to server mode only (PR #401), which broke DNS in client mode since openresolv
+  still needs to register a control interface before WireGuard brings the tunnel up.
 
 ### Changed
 
-- Bumped Alpine image to 3.23 again
-- Revert Alpine image to 3.22
-- Bumped Alpine image to 3.23
-- Bumped Alpine image to 3.22 and removed iptables-legacy
-- Reverted to iptables-legacy for better compatibility
+- Bumped Alpine base image to 3.23
 
 ### Removed
 
 - Removed outdated known issue section from README.md
+- Removed Docker Hub publishing; image is now only pushed to GHCR (`ghcr.io/arkandias/nordlynx`)
 
 ### Fixed
 
-- Set read-only permissions for 'check-upstream-updates' workflow
+- Scoped 'check-upstream-updates' workflow permissions to read-only with explicit issue write access
 
 ## [1.3] - 2025-01-20
 
