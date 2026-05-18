@@ -1,0 +1,17 @@
+name: Check Upstream Drift
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-upstream:
+    uses: arkandias/actions/.github/workflows/check-upstream-drift.yml@v1
+    with:
+      upstream_repo: https://github.com/linuxserver/docker-wireguard.git
+      upstream_branch: master
