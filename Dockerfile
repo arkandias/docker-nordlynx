@@ -16,7 +16,7 @@ LABEL \
   org.opencontainers.image.authors="Julien Hauseux <julien.hauseux@gmail.com>" \
   org.opencontainers.image.vendor="Julien Hauseux" \
   org.opencontainers.image.licenses="GPL-3.0-or-later" \
-  org.opencontainers.image.base.name="ghcr.io/linuxserver/baseimage-alpine:3.20" \
+  org.opencontainers.image.base.name="ghcr.io/linuxserver/baseimage-alpine:3.24" \
   org.opencontainers.image.base.digest="" \
   org.opencontainers.image.created="${BUILD_DATE}" \
   org.opencontainers.image.revision="${VCS_REF}" \
