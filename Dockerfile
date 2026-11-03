@@ -57,6 +57,7 @@ RUN \
   sed -i 's|\[\[ $proto == -4 \]\] && cmd sysctl -q net\.ipv4\.conf\.all\.src_valid_mark=1|[[ $proto == -4 ]] \&\& [[ $(sysctl -n net.ipv4.conf.all.src_valid_mark) != 1 ]] \&\& cmd sysctl -q net.ipv4.conf.all.src_valid_mark=1|' /usr/bin/wg-quick && \
   rm -rf /etc/wireguard && \
   ln -s /config/wg_confs /etc/wireguard && \
+  cp /usr/bin/wg-quick /usr/local/bin/wg-quick && \
   printf "Build-version: ${VERSION}\nBuild-date: ${BUILD_DATE}" > /build_version && \
   echo "**** clean up ****" && \
   rm -rf \

@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped Alpine base image to 3.24
 
+### Fixed
+
+- Copied `wg-quick` to `/usr/local/bin` to avoid AppArmor issues on Ubuntu 25+ with custom runtimes (merged from
+  upstream, PR #419)
+
 ## [1.4] - 2026-04-28
 
 ### Added
